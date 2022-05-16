@@ -26,7 +26,7 @@ fn mine_block(id: u64, timestamp: i64, previous_hash: &str, data: &str) -> (u64,
             info!("nonce: {}", nonce);
         }
 
-        let hash = calculate_hash(id, timestamp, previous_hash, data, nonce);
+        let hash = calculate_hash(timestamp, previous_hash, data, nonce);
         let binary_hash = hash_to_binary_representation(&hash);
         if binary_hash.starts_with(DIFFICULTY_PREFIX) {
             info!(
@@ -43,9 +43,8 @@ fn mine_block(id: u64, timestamp: i64, previous_hash: &str, data: &str) -> (u64,
     }
 }
 
-fn calculate_hash(id: u64, timestamp: i64, previous_hash: &str, data: &str, nonce: u64) -> Vec<u8> {
+fn calculate_hash(timestamp: i64, previous_hash: &str, data: &str, nonce: u64) -> Vec<u8> {
     let data = serde_json::json!({
-        "id": id,
         "previous_hash": previous_hash,
         "data": data,
         "timestamp": timestamp,
@@ -69,7 +68,6 @@ impl Chain {
 
     fn genesis() -> Block {
         Block {
-            id: 0,
             timestamp: Utc::now().timestamp(),
             previous_hash: String::from("genesis"),
             data: String::from("genesis!"),
@@ -80,7 +78,7 @@ impl Chain {
 
     pub fn add_block(&mut self, new_block: NewBlock) {
         let previous_block = self.blocks.last().expect("there is at least one block");
-        let block_to_add = Block::new(DIFFICULTY_LEVEL, previous_block.id + 1, previous_block.hash.clone(), new_block.data);
+        let block_to_add = Block::new(DIFFICULTY_LEVEL, previous_block.hash.clone(), new_block.data);
 
         if block_to_add.is_valid(previous_block) {
             self.blocks.push(block_to_add);
@@ -116,30 +114,20 @@ impl Chain {
 
     fn is_block_valid(&self, block: &Block, previous_block: &Block) -> bool {
         if block.previous_hash != previous_block.hash {
-            warn!("block with id: {} has wrong previous hash", block.id);
             return false;
         } else if !hash_to_binary_representation(
             &hex::decode(&block.hash).expect("can decode from hex"),
         )
         .starts_with(DIFFICULTY_PREFIX)
         {
-            warn!("block with id: {} has invalid difficulty", block.id);
-            return false;
-        } else if block.id != previous_block.id + 1 {
-            warn!(
-                "block with id: {} is not the next block after the latest: {}",
-                block.id, previous_block.id
-            );
             return false;
         } else if hex::encode(calculate_hash(
-            block.id,
             block.timestamp,
             &block.previous_hash,
             &block.data,
             block.nonce,
         )) != block.hash
         {
-            warn!("block with id: {} has invalid hash", block.id);
             return false;
         }
 
@@ -186,7 +174,6 @@ impl Chain {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block {
-    pub id: u64,
     pub hash: String,
     pub previous_hash: String,
     pub timestamp: i64,
@@ -194,13 +181,12 @@ pub struct Block {
     pub nonce: u64,
 }
 impl Block {
-    pub fn new(difficulty: i32, id: u64, previous_hash: String, data: String) -> Self {
+    pub fn new(difficulty: i32, previous_hash: String, data: String) -> Self {
         let now = Utc::now();
 
-        let (nonce, hash) = Self::mine(difficulty, id, now.timestamp(), &previous_hash, &data);
+        let (nonce, hash) = Self::mine(difficulty, now.timestamp(), &previous_hash, &data);
 
         Self {
-            id,
             hash,
             timestamp: now.timestamp(),
             previous_hash,
@@ -211,37 +197,30 @@ impl Block {
 
     pub fn is_valid(&self, previous_block: &Block) -> bool {
         if self.previous_hash != previous_block.hash {
-            warn!("block with id: {} has wrong previous hash", self.id);
+            warn!("block {} has wrong previous hash", self.timestamp);
             return false;
         } else if !hash_to_binary_representation(
             &hex::decode(&self.hash).expect("can decode from hex"),
         )
             .starts_with(DIFFICULTY_PREFIX)
         {
-            warn!("block with id: {} has invalid difficulty", self.id);
-            return false;
-        } else if self.id != previous_block.id + 1 {
-            warn!(
-                "block with id: {} is not the next block after the latest: {}",
-                self.id, previous_block.id
-            );
+            warn!("block {} has invalid difficulty", self.timestamp);
             return false;
         } else if hex::encode(calculate_hash(
-            self.id,
             self.timestamp,
             &self.previous_hash,
             &self.data,
             self.nonce,
         )) != self.hash
         {
-            warn!("block with id: {} has invalid hash", self.id);
+            warn!("block {} has invalid hash", self.timestamp);
             return false;
         }
 
         return true;
     }
 
-    fn mine(difficulty: i32, id: u64, timestamp: i64, previous_hash: &str, data: &str) -> (u64, String) {
+    fn mine(difficulty: i32, timestamp: i64, previous_hash: &str, data: &str) -> (u64, String) {
         info!("mining block...");
 
         let difficulty_prefix = (0..difficulty).map(|_| "0").collect::<String>();
@@ -252,7 +231,7 @@ impl Block {
                 info!("nonce: {}", nonce);
             }
 
-            let hash = calculate_hash(id, timestamp, previous_hash, data, nonce);
+            let hash = calculate_hash(timestamp, previous_hash, data, nonce);
             let binary_hash = hash_to_binary_representation(&hash);
             if binary_hash.starts_with(&difficulty_prefix) {
                 info!(
@@ -284,7 +263,7 @@ fn main() {
     chain.add_block(new_block);
     println!("{:#?}", chain);
     println!("valid: {:#?}", chain.is_valid());
-    let new_block = Block::new(DIFFICULTY_LEVEL, 1, String::from("123"), String::from("Invalid!!"));
+    let new_block = Block::new(DIFFICULTY_LEVEL, String::from("123"), String::from("Invalid!!"));
     chain.blocks.push(new_block);
     println!("valid: {:#?}", chain.is_valid());
 
