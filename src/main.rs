@@ -15,14 +15,18 @@ const DIFFICULTY_LEVEL: i32 = 2;
 pub struct Chain {
     pub blocks: Vec<Block>,
     pending_transactions: Vec<Transaction>,
+    miner_address: String,
+    miner_reward: i32,
 }
 
 impl Chain {
-    pub fn new() -> Self {
+    pub fn new(miner_address: String) -> Self {
         let first_block = Self::genesis();
         Self {
             blocks: vec![first_block],
             pending_transactions: vec![],
+            miner_address,
+            miner_reward: 10,
         }
     }
 
@@ -63,7 +67,9 @@ impl Chain {
             error!("could not add block -- invalid");
         }
 
-        self.pending_transactions = vec![];
+        self.pending_transactions = vec![
+            Transaction { from_address: self.miner_address.clone(), to_address: self.miner_address.clone(), amount: self.miner_reward, reference: "rewaaad".to_string() }
+        ];
     }
 
     pub fn is_valid(&self) -> bool {
@@ -242,7 +248,7 @@ impl Block {
 fn main() {
     env_logger::init();
 
-    let chain = &mut Chain::new();
+    let chain = &mut Chain::new("ABC".to_string());
     let transaction_1 = Transaction {
         from_address: "A".to_string(),
         to_address: "B".to_string(),
@@ -262,6 +268,7 @@ fn main() {
 
     println!("balance for `A`: {:#?}", chain.get_balance_for_address("A".to_string()));
     println!("balance for `B`: {:#?}", chain.get_balance_for_address("B".to_string()));
+    println!("balance for `ABC`, AKA, The Miner: {:#?}", chain.get_balance_for_address("ABC".to_string()));
 
     println!("Hello, world!");
 }
