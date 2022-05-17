@@ -8,36 +8,6 @@ use sha2::{Digest, Sha256};
 const DIFFICULTY_PREFIX: &str = "00";
 const DIFFICULTY_LEVEL: i32 = 2;
 
-fn hash_to_binary_representation(hash: &[u8]) -> String {
-    let mut res: String = String::default();
-    for c in hash {
-        res.push_str(&format!("{:b}", c));
-    }
-
-    res
-}
-
-fn mine_block(id: u64, timestamp: i64, previous_hash: &str, data: &str) -> (u64, String) {
-    info!("mining block...");
-
-    let mut nonce = 0;
-    loop {
-        if nonce % 100000 == 0 {
-            info!("nonce: {}", nonce);
-        }
-
-        let hash = calculate_hash(timestamp, previous_hash, data, nonce);
-        let binary_hash = hash_to_binary_representation(&hash);
-        if binary_hash.starts_with(DIFFICULTY_PREFIX) {
-            info!(
-                "mined! nonce: {}, hash: {}, binary hash: {}",
-                nonce,
-                hex::encode(&hash),
-                binary_hash
-            );
-
-            return (nonce, hex::encode(hash));
-        }
 
         nonce += 1;
     }
@@ -152,24 +122,9 @@ impl Chain {
         return true;
     }
 
-    fn choose_chain(&mut self, local: Vec<Block>, remote: Vec<Block>) -> Vec<Block> {
-        let is_local_valid = self.is_chain_valid(&local);
-        let is_remote_valid = self.is_chain_valid(&remote);
-
-        if is_local_valid && is_remote_valid {
-            if local.len() > remote.len() {
-                return local;
-            } else {
-                return remote;
-            }
-        } else if is_remote_valid && !is_local_valid {
-            return remote;
-        } else if !is_remote_valid && is_local_valid {
-            return local;
-        } else {
-            panic!("local and remote chains are both invalid");
-        }
-    }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Transaction {
+    data: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -177,20 +132,20 @@ pub struct Block {
     pub hash: String,
     pub previous_hash: String,
     pub timestamp: i64,
-    pub data: String,
+    pub transactions: Vec<Transaction>,
     pub nonce: u64,
 }
 impl Block {
-    pub fn new(difficulty: i32, previous_hash: String, data: String) -> Self {
+    pub fn new(difficulty: i32, previous_hash: String, transactions: Vec<Transaction>) -> Self {
         let now = Utc::now();
 
-        let (nonce, hash) = Self::mine(difficulty, now.timestamp(), &previous_hash, &data);
+        let (nonce, hash) = Self::mine(difficulty, now.timestamp(), &previous_hash, &transactions);
 
         Self {
             hash,
             timestamp: now.timestamp(),
             previous_hash,
-            data,
+            transactions,
             nonce,
         }
     }
@@ -199,17 +154,17 @@ impl Block {
         if self.previous_hash != previous_block.hash {
             warn!("block {} has wrong previous hash", self.timestamp);
             return false;
-        } else if !hash_to_binary_representation(
+        } else if !Self::hash_to_binary_representation(
             &hex::decode(&self.hash).expect("can decode from hex"),
         )
             .starts_with(DIFFICULTY_PREFIX)
         {
             warn!("block {} has invalid difficulty", self.timestamp);
             return false;
-        } else if hex::encode(calculate_hash(
+        } else if hex::encode(Self::calculate_hash(
             self.timestamp,
             &self.previous_hash,
-            &self.data,
+            &self.transactions,
             self.nonce,
         )) != self.hash
         {
@@ -220,7 +175,7 @@ impl Block {
         return true;
     }
 
-    fn mine(difficulty: i32, timestamp: i64, previous_hash: &str, data: &str) -> (u64, String) {
+    fn mine(difficulty: i32, timestamp: i64, previous_hash: &str, transactions: &Vec<Transaction>) -> (u64, String) {
         info!("mining block...");
 
         let difficulty_prefix = (0..difficulty).map(|_| "0").collect::<String>();
@@ -231,8 +186,8 @@ impl Block {
                 info!("nonce: {}", nonce);
             }
 
-            let hash = calculate_hash(timestamp, previous_hash, data, nonce);
-            let binary_hash = hash_to_binary_representation(&hash);
+            let hash = Self::calculate_hash(timestamp, previous_hash, transactions, nonce);
+            let binary_hash = Self::hash_to_binary_representation(&hash);
             if binary_hash.starts_with(&difficulty_prefix) {
                 info!(
                     "mined $$$$$$$$$$$$$$$! nonce: {}, hash: {}, binary hash: {}",
@@ -246,6 +201,29 @@ impl Block {
 
             nonce += 1;
         }
+    }
+
+    fn calculate_hash(timestamp: i64, previous_hash: &str, transactions: &Vec<Transaction>, nonce: u64) -> Vec<u8> {
+        let data = serde_json::json!({
+            "previous_hash": previous_hash,
+            "transactions": transactions,
+            "timestamp": timestamp,
+            "nonec": nonce,
+        });
+
+        let mut hasher = Sha256::new();
+        hasher.update(data.to_string().as_bytes());
+
+        hasher.finalize().as_slice().to_owned()
+    }
+
+    fn hash_to_binary_representation(hash: &[u8]) -> String {
+        let mut res: String = String::default();
+        for c in hash {
+            res.push_str(&format!("{:b}", c));
+        }
+
+        res
     }
 }
 
