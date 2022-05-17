@@ -68,6 +68,21 @@ impl Chain {
         return true;
     }
 
+    pub fn get_balance_for_address(&self, address: String) -> i32 {
+        let mut balance: i32 = 0;
+        for block in self.blocks.iter() {
+            for transaction in block.transactions.iter() {
+                if transaction.to_address == address {
+                    balance += transaction.amount;
+                } else if transaction.from_address == address {
+                    balance -= transaction.amount;
+                }
+            }
+        }
+
+        balance
+    }
+
     pub fn choose_chain<'a>(local: &'a Self, remote: &'a Self) -> &'a Self {
         let is_local_valid = local.is_valid();
         let is_remote_valid = remote.is_valid();
@@ -210,6 +225,9 @@ fn main() {
     chain.add_transaction(transaction_2);
     println!("{:#?}", chain);
     println!("valid: {:#?}", chain.is_valid());
+
+    println!("balance for `A`: {:#?}", chain.get_balance_for_address("A".to_string()));
+    println!("balance for `B`: {:#?}", chain.get_balance_for_address("B".to_string()));
 
     println!("Hello, world!");
 }
