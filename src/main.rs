@@ -211,12 +211,6 @@ impl Block {
     }
 }
 
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct NewBlock {
-    pub data: String,
-}
-
 fn main() {
     env_logger::init();
 
