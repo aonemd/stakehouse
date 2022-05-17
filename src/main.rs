@@ -9,24 +9,6 @@ const DIFFICULTY_PREFIX: &str = "00";
 const DIFFICULTY_LEVEL: i32 = 2;
 
 
-        nonce += 1;
-    }
-}
-
-fn calculate_hash(timestamp: i64, previous_hash: &str, data: &str, nonce: u64) -> Vec<u8> {
-    let data = serde_json::json!({
-        "previous_hash": previous_hash,
-        "data": data,
-        "timestamp": timestamp,
-        "nonec": nonce,
-    });
-
-    let mut hasher = Sha256::new();
-    hasher.update(data.to_string().as_bytes());
-
-    hasher.finalize().as_slice().to_owned()
-}
-
 #[derive(Debug)]
 pub struct Chain {
     pub blocks: Vec<Block>,
@@ -65,40 +47,9 @@ impl Chain {
             let previous_block = self.blocks.get(i - 1).expect("has to exist");
 
             // if one block fails validation, they all fail
-            if !self.is_block_valid(current_block, previous_block) {
+            if !current_block.is_valid(previous_block) {
                 return false;
             }
-        }
-
-        return true;
-    }
-
-    fn try_add_block(&mut self, block: Block) -> () {
-        let latest_block = self.blocks.last().expect("there is at least one block");
-        if self.is_block_valid(&block, latest_block) {
-            self.blocks.push(block);
-        } else {
-            error!("could not add block -- invalid");
-        }
-    }
-
-    fn is_block_valid(&self, block: &Block, previous_block: &Block) -> bool {
-        if block.previous_hash != previous_block.hash {
-            return false;
-        } else if !hash_to_binary_representation(
-            &hex::decode(&block.hash).expect("can decode from hex"),
-        )
-        .starts_with(DIFFICULTY_PREFIX)
-        {
-            return false;
-        } else if hex::encode(calculate_hash(
-            block.timestamp,
-            &block.previous_hash,
-            &block.data,
-            block.nonce,
-        )) != block.hash
-        {
-            return false;
         }
 
         return true;
@@ -114,13 +65,33 @@ impl Chain {
             let first = chain.get(i - 1).expect("has to exist");
             let second = chain.get(i).expect("has to exist");
             // if one block fails validation, they all fail
-            if !self.is_block_valid(second, first) {
+            if !second.is_valid(first) {
                 return false;
             }
         }
 
         return true;
     }
+
+    fn choose_chain(&mut self, local: Vec<Block>, remote: Vec<Block>) -> Vec<Block> {
+        let is_local_valid = self.is_chain_valid(&local);
+        let is_remote_valid = self.is_chain_valid(&remote);
+
+        if is_local_valid && is_remote_valid {
+            if local.len() > remote.len() {
+                return local;
+            } else {
+                return remote;
+            }
+        } else if is_remote_valid && !is_local_valid {
+            return remote;
+        } else if !is_remote_valid && is_local_valid {
+            return local;
+        } else {
+            panic!("local and remote chains are both invalid");
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Transaction {
