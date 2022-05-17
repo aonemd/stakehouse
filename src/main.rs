@@ -1,4 +1,7 @@
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
+
+use std::net::ToSocketAddrs;
 
 use chrono::Utc;
 use log::{error, info, warn};
@@ -7,7 +10,6 @@ use sha2::{Digest, Sha256};
 
 const DIFFICULTY_PREFIX: &str = "00";
 const DIFFICULTY_LEVEL: i32 = 2;
-
 
 #[derive(Debug)]
 pub struct Chain {
@@ -18,11 +20,19 @@ pub struct Chain {
 impl Chain {
     pub fn new() -> Self {
         let first_block = Self::genesis();
-        Self { blocks: vec![first_block], pending_transactions: vec![]  }
+        Self {
+            blocks: vec![first_block],
+            pending_transactions: vec![],
+        }
     }
 
     fn genesis() -> Block {
-        let first_transaction = Transaction { from_address: "a_quark".to_string(), to_address: "a_quark".to_string(), amount: 0, reference: String::from("genesis!") };
+        let first_transaction = Transaction {
+            from_address: "a_quark".to_string(),
+            to_address: "a_quark".to_string(),
+            amount: 0,
+            reference: String::from("genesis!"),
+        };
         Block {
             timestamp: Utc::now().timestamp(),
             previous_hash: String::from("genesis"),
@@ -41,7 +51,11 @@ impl Chain {
 
     fn mine_pending_transactions_to_a_block(&mut self) {
         let previous_block = self.blocks.last().expect("there is at least one block");
-        let block_to_add = Block::new(DIFFICULTY_LEVEL, previous_block.hash.clone(), self.pending_transactions.clone());
+        let block_to_add = Block::new(
+            DIFFICULTY_LEVEL,
+            previous_block.hash.clone(),
+            self.pending_transactions.clone(),
+        );
 
         if block_to_add.is_valid(previous_block) {
             self.blocks.push(block_to_add);
@@ -56,7 +70,7 @@ impl Chain {
         for i in 1..self.blocks.len() {
             // ignore the genesis block -- the one before it all started
 
-            let current_block  = self.blocks.get(i).expect("has to exist");
+            let current_block = self.blocks.get(i).expect("has to exist");
             let previous_block = self.blocks.get(i - 1).expect("has to exist");
 
             // if one block fails validation, they all fail
@@ -145,7 +159,7 @@ impl Block {
         } else if !Self::hash_to_binary_representation(
             &hex::decode(&self.hash).expect("can decode from hex"),
         )
-            .starts_with(DIFFICULTY_PREFIX)
+        .starts_with(DIFFICULTY_PREFIX)
         {
             warn!("block {} has invalid difficulty", self.timestamp);
             return false;
@@ -163,7 +177,12 @@ impl Block {
         return true;
     }
 
-    fn mine(difficulty: i32, timestamp: i64, previous_hash: &str, transactions: &Vec<Transaction>) -> (u64, String) {
+    fn mine(
+        difficulty: i32,
+        timestamp: i64,
+        previous_hash: &str,
+        transactions: &Vec<Transaction>,
+    ) -> (u64, String) {
         info!("mining block...");
 
         let difficulty_prefix = (0..difficulty).map(|_| "0").collect::<String>();
@@ -191,7 +210,12 @@ impl Block {
         }
     }
 
-    fn calculate_hash(timestamp: i64, previous_hash: &str, transactions: &Vec<Transaction>, nonce: u64) -> Vec<u8> {
+    fn calculate_hash(
+        timestamp: i64,
+        previous_hash: &str,
+        transactions: &Vec<Transaction>,
+        nonce: u64,
+    ) -> Vec<u8> {
         let data = serde_json::json!({
             "previous_hash": previous_hash,
             "transactions": transactions,
@@ -219,8 +243,18 @@ fn main() {
     env_logger::init();
 
     let chain = &mut Chain::new();
-    let transaction_1 = Transaction { from_address: "A".to_string(), to_address: "B".to_string(), amount: 2, reference: String::from("my transaction") };
-    let transaction_2 = Transaction { from_address: "A".to_string(), to_address: "B".to_string(), amount: 3, reference: String::from("my transaction") };
+    let transaction_1 = Transaction {
+        from_address: "A".to_string(),
+        to_address: "B".to_string(),
+        amount: 2,
+        reference: String::from("my transaction"),
+    };
+    let transaction_2 = Transaction {
+        from_address: "A".to_string(),
+        to_address: "B".to_string(),
+        amount: 3,
+        reference: String::from("my transaction"),
+    };
     chain.add_transaction(transaction_1);
     chain.add_transaction(transaction_2);
     println!("{:#?}", chain);
