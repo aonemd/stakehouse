@@ -22,7 +22,7 @@ impl Chain {
     }
 
     fn genesis() -> Block {
-        let first_transaction = Transaction { data: String::from("genesis!") };
+        let first_transaction = Transaction { reference: String::from("genesis!") };
         Block {
             timestamp: Utc::now().timestamp(),
             previous_hash: String::from("genesis"),
@@ -108,7 +108,7 @@ impl Chain {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Transaction {
-    data: String,
+    reference: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -221,7 +221,7 @@ fn main() {
     env_logger::init();
 
     let chain = &mut Chain::new();
-    let new_block = Transaction { data: String::from("my transaction") };
+    let new_block = Transaction { reference: String::from("my transaction") };
     chain.add_transaction(new_block);
     println!("{:#?}", chain);
     println!("valid: {:#?}", chain.is_valid());
