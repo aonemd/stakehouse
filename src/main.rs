@@ -12,31 +12,44 @@ const DIFFICULTY_LEVEL: i32 = 2;
 #[derive(Debug)]
 pub struct Chain {
     pub blocks: Vec<Block>,
+    pending_transactions: Vec<Transaction>,
 }
+
 impl Chain {
     pub fn new() -> Self {
-        Self { blocks: vec![Self::genesis()] }
+        let first_block = Self::genesis();
+        Self { blocks: vec![first_block], pending_transactions: vec![]  }
     }
 
     fn genesis() -> Block {
+        let first_transaction = Transaction { data: String::from("genesis!") };
         Block {
             timestamp: Utc::now().timestamp(),
             previous_hash: String::from("genesis"),
-            data: String::from("genesis!"),
+            transactions: vec![first_transaction],
             nonce: 2836,
             hash: "0000f816a87f806bb0073dcf026a64fb40c946b5abee2573702828694d5b4c43".to_string(),
         }
     }
 
-    pub fn add_block(&mut self, new_block: NewBlock) {
+    pub fn add_transaction(&mut self, new_transaction: Transaction) {
+        self.pending_transactions.push(new_transaction);
+
+        // a predefined number of transactions every number (10) of minutes
+        self.mine_pending_transactions_to_a_block();
+    }
+
+    fn mine_pending_transactions_to_a_block(&mut self) {
         let previous_block = self.blocks.last().expect("there is at least one block");
-        let block_to_add = Block::new(DIFFICULTY_LEVEL, previous_block.hash.clone(), new_block.data);
+        let block_to_add = Block::new(DIFFICULTY_LEVEL, previous_block.hash.clone(), self.pending_transactions.clone());
 
         if block_to_add.is_valid(previous_block) {
             self.blocks.push(block_to_add);
         } else {
             error!("could not add block -- invalid");
         }
+
+        self.pending_transactions = vec![];
     }
 
     pub fn is_valid(&self) -> bool {
@@ -207,13 +220,10 @@ pub struct NewBlock {
 fn main() {
     env_logger::init();
 
-    let mut chain = &mut Chain::new();
-    let new_block = NewBlock { data: String::from("data") };
-    chain.add_block(new_block);
+    let chain = &mut Chain::new();
+    let new_block = Transaction { data: String::from("my transaction") };
+    chain.add_transaction(new_block);
     println!("{:#?}", chain);
-    println!("valid: {:#?}", chain.is_valid());
-    let new_block = Block::new(DIFFICULTY_LEVEL, String::from("123"), String::from("Invalid!!"));
-    chain.blocks.push(new_block);
     println!("valid: {:#?}", chain.is_valid());
 
     println!("Hello, world!");
