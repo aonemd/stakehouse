@@ -68,27 +68,9 @@ impl Chain {
         return true;
     }
 
-    fn is_chain_valid(&self, chain: &[Block]) -> bool {
-        for i in 0..chain.len() {
-            // ignore the genesis block -- the one before ut all started
-            if i == 0 {
-                continue;
-            }
-
-            let first = chain.get(i - 1).expect("has to exist");
-            let second = chain.get(i).expect("has to exist");
-            // if one block fails validation, they all fail
-            if !second.is_valid(first) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    fn choose_chain(&mut self, local: Vec<Block>, remote: Vec<Block>) -> Vec<Block> {
-        let is_local_valid = self.is_chain_valid(&local);
-        let is_remote_valid = self.is_chain_valid(&remote);
+    pub fn choose_chain<'a>(local: &'a Self, remote: &'a Self) -> &'a Self {
+        let is_local_valid = local.is_valid();
+        let is_remote_valid = remote.is_valid();
 
         if is_local_valid && is_remote_valid {
             if local.len() > remote.len() {
@@ -103,6 +85,10 @@ impl Chain {
         } else {
             panic!("local and remote chains are both invalid");
         }
+    }
+
+    fn len(&self) -> usize {
+        self.blocks.len()
     }
 }
 
