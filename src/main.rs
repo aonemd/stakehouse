@@ -12,7 +12,8 @@ use ed25519_compact::*;
 
 const DIFFICULTY_PREFIX: &str = "00";
 const DIFFICULTY_LEVEL: i32 = 2;
-const MINING_ADDRESS: &str = "a_quark";
+const GENESIS_ADDRESS: &str = "a_quark";
+const MINING_ADDRESS: &str = "AA";
 
 #[derive(Debug)]
 pub struct Chain {
@@ -35,8 +36,8 @@ impl Chain {
 
     fn genesis() -> Block {
         let first_transaction = Transaction {
-            from_address: MINING_ADDRESS.to_string(),
-            to_address: MINING_ADDRESS.to_string(),
+            from_address: GENESIS_ADDRESS.to_string(),
+            to_address: GENESIS_ADDRESS.to_string(),
             amount: 0,
             reference: String::from("genesis!"),
             signature: None,
