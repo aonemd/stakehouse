@@ -17,3 +17,4 @@ once_cell = "1.5"
 log = "0.4.6"
 pretty_env_logger = "0.4"
 env_logger = "0.6.1"
+ed25519-compact = { git = "https://github.com/jedisct1/rust-ed25519-compact", branch = "master", features = ["std", "pem"] }

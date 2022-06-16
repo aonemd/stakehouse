@@ -8,8 +8,11 @@ use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use ed25519_compact::*;
+
 const DIFFICULTY_PREFIX: &str = "00";
 const DIFFICULTY_LEVEL: i32 = 2;
+const MINING_ADDRESS: &str = "a_quark";
 
 #[derive(Debug)]
 pub struct Chain {
@@ -32,10 +35,11 @@ impl Chain {
 
     fn genesis() -> Block {
         let first_transaction = Transaction {
-            from_address: "a_quark".to_string(),
-            to_address: "a_quark".to_string(),
+            from_address: MINING_ADDRESS.to_string(),
+            to_address: MINING_ADDRESS.to_string(),
             amount: 0,
             reference: String::from("genesis!"),
+            signature: None,
         };
         Block {
             timestamp: Utc::now().timestamp(),
@@ -133,6 +137,50 @@ pub struct Transaction {
     to_address: String,
     amount: i32,
     reference: String,
+    signature: Option<Vec<u8>>,
+}
+
+impl Transaction {
+    pub fn sign(&mut self, key_pair: KeyPair) {
+        let hash = self.calculate_hash();
+        let signature = key_pair.sk.sign(hash, Some(Noise::default()));
+        self.signature = Some(signature.as_ref().to_vec());
+    }
+
+    pub fn is_valid(&self) -> bool {
+        if self.from_address == MINING_ADDRESS.to_string() {
+            return true;
+        }
+
+        if self.signature == None {
+            return false;
+        }
+
+        let public_key = PublicKey::from_pem(&self.from_address).expect("Invalid `from_address`");
+        let sig: Signature = match Signature::from_slice(self.signature.as_ref().unwrap()) {
+            Ok(s) => s,
+            _ => return false,
+        };
+
+        match public_key.verify(self.calculate_hash(), &sig) {
+            Ok(_) => true,
+            _ => false,
+        }
+    }
+
+    fn calculate_hash(&self) -> Vec<u8> {
+        let data = serde_json::json!({
+            "from_address": self.from_address,
+            "to_address": self.to_address,
+            "amount": self.amount,
+            "reference": self.reference,
+        });
+
+        let mut hasher = Sha256::new();
+        hasher.update(data.to_string().as_bytes());
+
+        hasher.finalize().as_slice().to_owned()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
