@@ -62,7 +62,7 @@ impl Chain {
         self.mine_pending_transactions_to_a_block();
     }
 
-    fn mine_pending_transactions_to_a_block(&mut self) {
+    pub fn mine_pending_transactions_to_a_block(&mut self) {
         let previous_block = self.blocks.last().expect("there is at least one block");
         let block_to_add = Block::new(
             DIFFICULTY_LEVEL,
@@ -319,27 +319,25 @@ impl Block {
 fn main() {
     env_logger::init();
 
-    let chain = &mut Chain::new("ABC".to_string());
-    let transaction_1 = Transaction {
-        from_address: "A".to_string(),
-        to_address: "B".to_string(),
-        amount: 2,
-        reference: String::from("my transaction"),
-    };
-    let transaction_2 = Transaction {
-        from_address: "A".to_string(),
+    let my_key_pair: KeyPair = KeyPair::from_seed(Seed::default());
+    let my_address = my_key_pair.pk.to_pem();
+
+    let chain = &mut Chain::new(my_address.clone());
+
+    let t1 = &mut Transaction {
+        from_address: my_address.clone(),
         to_address: "B".to_string(),
         amount: 3,
         reference: String::from("my transaction"),
+        signature: None,
     };
-    chain.add_transaction(transaction_1);
-    chain.add_transaction(transaction_2);
-    println!("{:#?}", chain);
-    println!("valid: {:#?}", chain.is_valid());
+    t1.sign(my_key_pair);
+    chain.add_transaction(t1.to_owned());
+    chain.mine_pending_transactions_to_a_block();
 
-    println!("balance for `A`: {:#?}", chain.get_balance_for_address("A".to_string()));
-    println!("balance for `B`: {:#?}", chain.get_balance_for_address("B".to_string()));
-    println!("balance for `ABC`, AKA, The Miner: {:#?}", chain.get_balance_for_address("ABC".to_string()));
+    println!("Chain: {:#?}", chain);
+    println!("Chain valid? {:#?}", chain.is_valid());
+    println!("balance for `A`: {:#?}", chain.get_balance_for_address(my_address.clone()));
 
     println!("Hello, world!");
 }
