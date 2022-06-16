@@ -76,9 +76,13 @@ impl Chain {
             error!("could not add block -- invalid");
         }
 
-        self.pending_transactions = vec![
-            Transaction { from_address: self.miner_address.clone(), to_address: self.miner_address.clone(), amount: self.miner_reward, reference: "rewaaad".to_string() }
-        ];
+        self.pending_transactions = vec![Transaction {
+            from_address: self.miner_address.clone(),
+            to_address: self.miner_address.clone(),
+            amount: self.miner_reward,
+            reference: "rewaaad".to_string(),
+            signature: None,
+        }];
     }
 
     pub fn is_valid(&self) -> bool {
