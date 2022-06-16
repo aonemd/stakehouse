@@ -154,6 +154,16 @@ pub struct Transaction {
 }
 
 impl Transaction {
+    pub fn new(from_address: String, to_address: String, amount: i32, reference: String) -> Self {
+        Transaction {
+            from_address,
+            to_address,
+            amount,
+            reference,
+            signature: None,
+        }
+    }
+
     pub fn sign(&mut self, key_pair: KeyPair) {
         let hash = self.calculate_hash();
         let signature = key_pair.sk.sign(hash, Some(Noise::default()));
