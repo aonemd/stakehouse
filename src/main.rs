@@ -51,6 +51,10 @@ impl Chain {
     }
 
     pub fn add_transaction(&mut self, new_transaction: Transaction) {
+        if !new_transaction.is_valid() {
+            panic!("Invalid transaction! Cannot add to chain!!");
+        }
+
         self.pending_transactions.push(new_transaction);
 
         // a predefined number of transactions every number (10) of minutes
@@ -82,6 +86,10 @@ impl Chain {
 
             let current_block = self.blocks.get(i).expect("has to exist");
             let previous_block = self.blocks.get(i - 1).expect("has to exist");
+
+            if !current_block.has_valid_transactions() {
+                return false;
+            }
 
             // if one block fails validation, they all fail
             if !current_block.is_valid(previous_block) {
@@ -229,6 +237,16 @@ impl Block {
         }
 
         return true;
+    }
+
+    pub fn has_valid_transactions(&self) -> bool {
+        for tx in &self.transactions {
+            if !tx.is_valid() {
+                return false;
+            }
+        }
+
+        true
     }
 
     fn mine(
